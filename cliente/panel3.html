@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/colreorder/1.6.2/css/colReorder.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/rowgroup/1.3.1/css/rowGroup.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="head">
+        <div class="logo">
+            <a href="#">Northwind</a>
+        </div>
+
+        <nav class="navbar">
+            <a href="index.html">Inicio</a>
+            <a href="panel.html">Consulta por año</a>
+            <a href="panel2.html">Ventas por Mes</a>
+            <a href="panel3.html">Productos</a>
+            <a href="panel4.html">Extra</a>
+            <a href="panel5.html">Extra 2.0</a>
+        </nav>
+    </div>
+
+    <div style="padding: 50px; background-color: #f2f2f2; border: 1px solid #ccc; text-align: center;">
+        <p style="color: black; font-size: 18px; line-height: 1.5;">
+        <h1>¡Bienvenido a la consulta de ventas totales por fecha de Northwind!</h1><br><br>
+
+        Aquí encontrarás una tabla completa que muestra las ventas por año de nuestros productos. Utilizando la base de<br>
+        datos de Northwind, hemos recopilado datos precisos y actualizados sobre nuestras ventas a lo largo de los años.<br>
+
+        En esta página, podrás seleccionar un año específico y explorar las ventas correspondientes a ese período.<br>
+        Nuestra tabla proporciona información importante, como el producto, la cantidad vendida y el total de<br>
+        ventas en cada año seleccionado.
+        </p>
+    </div>
+    <div  style="padding: 20px; background-color: #d0e4e9; border: 1px solid #ccc; text-align: center;">
+        <label for="productId" style="display: block; margin-bottom: 10px;">Seleccione un Producto</label>
+        <select id="productCombo" style="width: 200px; margin-bottom: 10px;"></select>
+        <br>
+            <label for="startDateInput" style="display: block; margin-bottom: 10px;">Fecha de Inicio:</label>
+            <input type="date" id="startDateInput" class="form-control mx-auto" style="width: 200px; margin-bottom: 10px;">
+            <label for="endDateInput" style="display: block; margin-bottom: 10px;">Fecha Final:</label>
+            <input type="date" id="endDateInput" class="form-control mx-auto" style="width: 200px; margin-bottom: 10px;">
+        <button onclick="loadChartData()" class="boton">Cargar Datos</button>
+    </div>
+
+    <div class="container">
+        <div class="form-group">
+            <label for="slider">Filtrar Rango:</label>
+            <div id="slider"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <canvas id="chart"></canvas>
+    </div>
+
+    <div class="container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Mes</th>
+                    <th>Ventas Totales</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/14.6.3/nouislider.min.js"></script>
+    <script type="text/javascript">
+        fetch("http://localhost:85/Product/GetProductsIDName", {
+            headers: { "Content-Type": "application/json" },
+            credentials: 'include'
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw response;
+                }
+                return response.json();
+            })
+            .then(info => {
+                // Obtener el elemento del combo box
+                var productCombo = document.getElementById('productCombo');
+
+                // Limpiar las opciones existentes
+                productCombo.innerHTML = '';
+
+                // Agregar las opciones del combo box utilizando los datos recibidos
+                info.forEach(item => {
+                    var option = document.createElement('option');
+                    option.value = item.productId;
+                    option.textContent = item.productName;
+                    productCombo.appendChild(option);
+                });
+            })
+            .catch(error => console.log(error));
+        var originalData = [];
+        var chart;
+
+        
+
+        function loadChartData() {
+            var productCombo = document.getElementById('productCombo');
+            var startDateInput = document.getElementById('startDateInput');
+            var endDateInput = document.getElementById('endDateInput');
+
+            var productId = productCombo.value;
+            console.log(productId)
+            var startDate = startDateInput.value;
+            var endDate = endDateInput.value;
+
+            fetch("http://localhost:85/Product/GetSalesOfProduct/" + encodeURIComponent(productId) + "/" + encodeURIComponent(startDate) + "/" + encodeURIComponent(endDate),
+                {
+                    headers: { "Content-Type": "application/json" },
+                    credentials: 'include'
+                }
+            )
+                .then(response => {
+                    if (!response.ok) {
+                        throw response;
+                    }
+                    return response.json();
+                })
+                .then(info => {
+                    originalData = info;
+                    updateChart();
+                    updateTable();
+                })
+                .catch(error => console.log(error));
+        }
+
+        function updateChart() {
+            var slider = document.getElementById('slider');
+            var filterValue = slider.noUiSlider.get();
+
+            var filteredData = originalData.filter(item => item.totalSales <= filterValue);
+
+            var months = filteredData.map(item => {
+                var month = new Date(item.year, item.month - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+                return month;
+            });
+
+            var sales = filteredData.map(item => item.totalSales);
+
+            var ctx = document.getElementById('chart').getContext('2d');
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Ventas Totales',
+                        data: sales,
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTable() {
+            var tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+
+            var slider = document.getElementById('slider');
+            var filterValue = slider.noUiSlider.get();
+
+            var filteredData = originalData.filter(item => item.totalSales <= filterValue);
+
+            filteredData.forEach(item => {
+                var month = new Date(item.year, item.month - 1, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+                var row = document.createElement('tr');
+                var monthCell = document.createElement('td');
+                var salesCell = document.createElement('td');
+
+                monthCell.textContent = month;
+                salesCell.textContent = item.totalSales;
+
+                row.appendChild(monthCell);
+                row.appendChild(salesCell);
+                tableBody.appendChild(row);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var slider = document.getElementById('slider');
+
+            noUiSlider.create(slider, {
+                start: [100],
+                connect: [true, false],
+                range: {
+                    'min': 0,
+                    'max': 10000
+                },
+                tooltips: true,
+                format: {
+                    to: function (value) {
+                        return value.toFixed(2);
+                    },
+                    from: function (value) {
+                        return parseFloat(value);
+                    }
+                }
+            });
+
+            slider.noUiSlider.on('update', function (values, handle) {
+                updateChart();
+                updateTable();
+            });
+        });
+    </script>
+</body>
+
+</html>
