@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/colreorder/1.6.2/css/colReorder.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.datatables.net/rowgroup/1.3.1/css/rowGroup.dataTables.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="head">
+        <div class="logo">
+            <a href="#">Northwind</a>
+        </div>
+        <nav class="navbar">
+            <a href="index.html">Inicio</a>
+            <a href="panel.html">Consulta por año</a>
+            <a href="panel2.html">Ventas por Mes</a>
+            <a href="panel3.html">Productos</a>
+            <a href="panel4.html">Extra</a>
+            <a href="panel5.html">Extra 2.0</a>
+            <a href="PanelFinal.html">Extra 3.0</a>
+            <a href="Ultimo.html">Ultimo</a>
+        </nav>
+    </div>
+    <div style="padding: 50px; background-color: #f2f2f2; border: 1px solid #ccc; text-align: center;">
+        <p style="color: black; font-size: 18px; line-height: 1.5;">
+        <h1>¡Bienvenido a la consulta de información de Northwind!</h1><br><br>
+        Esta interfaz dejará que el usuario pueda consultar en base a un año en específico, las empresas que han
+        tenido más ventas en el año seleccionado,
+        estas pudiéndose filtrar por ciudad.
+        </p>
+    </div>
+    <div style="padding: 20px; background-color: #d0e4e9; border: 1px solid #ccc; text-align: center;">
+        <label style="font-size: larger;" for="yearInput">Seleccione Un Año:</label>
+        <select id="yearInput">
+            <option value="1996">1996</option>
+            <option value="1997">1997</option>
+            <option value="1998">1998</option>
+            <option value="2022">2022</option>
+        </select>
+        <label for="productId" style="display: block; margin-bottom: 10px;">Selecciona Una Ciudad</label>
+        <select id="productCombo" style="width: 200px; margin-bottom: 10px;"></select>
+        <br>
+        <button onclick="cargar()" class="boton">Cargar Datos</button>
+        <br>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <canvas id="chart" style="max-width: 500px; max-height: 500px;"></canvas>
+        <canvas id="pieChart" style="max-width: 400px; max-height: 400px;"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript">
+        //Varibles que controlan las tablas
+        var chartInstance = null;
+        var pieChartInstance = null;
+
+        // Variables para almacenar los datos
+        var dataCache = [];
+
+       // cargar();
+
+        function cargar(Anio) {
+            // Obtener los elementos del año y ciudad
+            var yearInput = document.getElementById('yearInput');
+            var Anio = yearInput.value;
+
+            if (dataCache.length > 0) {
+                //data cache almacena los datos de la consulta
+                dataCache = []; // Borrar la caché existente antes de cargar nuevos datos
+                console.log("Caché borrada");
+            } else {
+                //Mensaje para saber que año se cargo
+                console.log("El año es " + Anio);
+                //uricode ayuda a procesar bien la URL
+                fetch("http://localhost:85/Product/GetTodoo/" + Anio, {
+                    headers: { "Content-Type": "application/json" },
+                    credentials: 'include'
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            //Si al cargar el json falla, sale esta linea.
+                            throw new Error(response.status + " " + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        dataCache = data; // Almacenar los datos en caché
+                        console.log("Datos cargados:", dataCache); // Mostrar los datos en la consola
+
+                        //Se llaman las funciones para graficar
+                        renderChart();
+                        renderPieChart();
+                    })
+                    .catch(error => {
+                        console.log("Error al obtener los datos:", error);
+                    });
+            }
+        }
+
+            //Grafica de barras
+        function renderChart() {
+            // Obtener el canvas y el contexto
+            var canvas = document.getElementById('chart');
+            var ctx = canvas.getContext('2d');
+
+            // Verificar si existe una gráfico anterior y lo destruirla
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Obtener los valores filtrados por la ciudad seleccionada
+            var productCombo = document.getElementById('productCombo');
+            var ciudadSeleccionada = productCombo.value;
+            //Se filtra extrallendo los valores del combo-box de la ciudad y solo mostrara los que son iguales a el
+            var datosFiltrados = dataCache.filter(item => item.city === ciudadSeleccionada);
+
+            // Obtener las etiquetas y los valores de los datos filtrados
+            ////etiquetas contiene los nombres de cada barra
+            //se cargan los datos
+            var etiquetas = datosFiltrados.map(item => item.companyName);
+            var valores = datosFiltrados.map(item => item.totalSales);
+
+            // Crear el gráfico de barras
+            chartInstance = new Chart(ctx, {
+                //grafico de tipo barras
+                type: 'bar',
+                data: {
+                    labels: etiquetas,
+                    datasets: [{
+                        //ventas la etiqueta del encabezado
+                        label: 'Ventas',
+                        //valores contiene las ventas de cada empresa 
+                        data: valores,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        //el eje y representa los valores de las ventas
+                        y: {
+                            //configura el eje de las y que su inicio sea en 0
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+            //grafica de pastel
+        function renderPieChart() {
+            // Obtener el canvas y el contexto
+            var pieCanvas = document.getElementById('pieChart');
+            var pieCtx = pieCanvas.getContext('2d');
+
+            // Verificar si existe una grafica de pasteles y destruirla
+            if (pieChartInstance) {
+                pieChartInstance.destroy();
+            }
+
+            // Obtener los valores filtrados por la ciudad seleccionada
+            var productCombo = document.getElementById('productCombo');
+            var ciudadSeleccionada = productCombo.value;
+            var datosFiltrados = dataCache.filter(item => item.city === ciudadSeleccionada);
+
+            // Obtener las etiquetas y los valores de los datos filtrados
+            var etiquetas = datosFiltrados.map(item => item.companyName);
+            var valores = datosFiltrados.map(item => item.totalSales);
+
+            // Crear el gráfico de pasteles
+            pieChartInstance = new Chart(pieCtx, {
+                //tipo pastel
+                type: 'pie',
+                data: {
+                    //la etiqueta del los encabezados
+                    labels: etiquetas,
+                    datasets: [{
+                        data: valores,
+                        backgroundColor: [
+                            //Escala de colores rgb y opacidad
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)',
+                            'rgba(75, 192, 192, 0.2)',
+                            'rgba(153, 102, 255, 0.2)',
+                            'rgba(255, 159, 64, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    //responsivo para que se adapte al tamaño del contendor
+                    responsive: true,
+                    legend: {
+                        //leyenda del grafico hasta arriba
+                        position: 'top',
+                    },
+                    title: {
+                        //display dice que se mostrara el encabezado
+                        //text es el encabezado
+                        display: true,
+                        text: 'Ventas por empresa'
+                    },
+                    animation: {
+                        //animacion del grafico de expandir y rotar
+                        animateScale: true,
+                        animateRotate: true
+                    }
+                }
+            });
+        }
+
+        fetch("http://localhost:85/Product/GetCity", {
+            headers: { "Content-Type": "application/json" },
+            credentials: 'include'
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw response;
+                }
+                return response.json();
+            })
+            .then(info => {
+                var productCombo = document.getElementById('productCombo');
+                productCombo.innerHTML = '';
+                info.forEach(item => {
+                    var option = document.createElement('option');
+                    option.value = item.city;
+                    option.textContent = item.city;
+                    productCombo.appendChild(option);
+                });
+                // Actualizar los gráficos al cambiar la ciudad seleccionada
+                //asigna una función anónima al evento onchange
+                //y cuando se selecciona una ciudad diferente del productCombo, 
+                //se ejecutarán las funciones
+                productCombo.onchange = function () {
+                    renderChart();
+                    renderPieChart();
+                }; 
+            })
+            .catch(error => console.log(error));
+    </script>
+</body>
+</html>

@@ -26,6 +26,8 @@
             <a href="panel3.html">Productos</a>
             <a href="panel4.html">Extra</a>
             <a href="panel5.html">Extra 2.0</a>
+            <a href="PanelFinal.html">Extra 3.0</a>
+            <a href="Ultimo.html">Ultimo</a>
         </nav>
 
     </div>
@@ -35,22 +37,24 @@
         <h1>¡Bienvenido a nuestra página de ventas por mes de Northwind!</h1><br><br>
 
         Aquí podrás encontrar una tabla detallada que muestra las ventas por mes de los productos de nuestra empresa<br>
-        ficticia. Utilizando la base de datos de Northwind, hemos recopilado información precisa y actualizada sobre las<br>
+        ficticia. Utilizando la base de datos de Northwind, hemos recopilado información precisa y actualizada sobre
+        las<br>
         ventas de nuestros productos.<br><br>
 
         En esta página, puedes seleccionar un mes específico y visualizar las ventas correspondientes a ese período.<br>
-        Nuestra tabla proporciona datos clave, como el nombre del producto, la cantidad vendida y el total de ventas en<br>
+        Nuestra tabla proporciona datos clave, como el nombre del producto, la cantidad vendida y el total de ventas
+        en<br>
         cada mes seleccionado.
         </p>
     </div>
-    <div  style="padding: 20px; background-color: #d0e4e9; border: 1px solid #ccc; text-align: center;">
-    <label for="startDate" style="display: block; margin-bottom: 10px;">Fecha inicial:</label>
-    <input type="date" id="startDate" name="startDate" style="width: 200px; margin-bottom: 10px;">
-    <label for="endDate" style="display: block; margin-bottom: 10px;">Fecha final:</label>
-    <input type="date" id="endDate" name="endDate" style="width: 200px; margin-bottom: 10px;">
-    <br>
-    <button style="background-color: black; color: white; border:1px solid black; width: 150px; height: 30px;"
-        onclick="generarTabla()">Generar tabla</button>
+    <div style="padding: 20px; background-color: #d0e4e9; border: 1px solid #ccc; text-align: center;">
+        <label for="startDate" style="display: block; margin-bottom: 10px;">Fecha inicial:</label>
+        <input type="date" id="startDate" name="startDate" style="width: 200px; margin-bottom: 10px;">
+        <label for="endDate" style="display: block; margin-bottom: 10px;">Fecha final:</label>
+        <input type="date" id="endDate" name="endDate" style="width: 200px; margin-bottom: 10px;">
+        <br>
+        <button style="background-color: black; color: white; border:1px solid black; width: 150px; height: 30px;"
+            onclick="generarTabla()">Generar tabla</button>
     </div>
     <br>
     <table id="tblProductos" class="display" style="width:100%"></table>
@@ -66,6 +70,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
     <script>
+        
         function generarTabla() {
             var startDate = document.getElementById("startDate").value;
             var endDate = document.getElementById("endDate").value;

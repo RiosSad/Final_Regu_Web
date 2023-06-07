@@ -3,7 +3,6 @@
 
 <head>
     <meta charset="utf-8" />
-    <title></title>
     <link href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css" rel="stylesheet" />
     <link href="https://cdn.datatables.net/colreorder/1.6.2/css/colReorder.dataTables.min.css" rel="stylesheet" />
     <link href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css" rel="stylesheet" />
@@ -29,7 +28,6 @@
             <a href="panel5.html">Extra 2.0</a>
             <a href="PanelFinal.html">Extra 3.0</a>
             <a href="Ultimo.html">Ultimo</a>
-
 
         </nav>
     </div>
@@ -58,36 +56,36 @@
         <select id="productCombo" style="width: 200px; margin-bottom: 10px;"></select>
         <br>
 
-        <button onclick="cargar()" class="boton">Cargar Datos</button>
-
     </div>
-    <div>
-        <canvas id="chart"></canvas>
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <canvas id="chart" style="max-width: 400px; max-height: 400px;"></canvas>
+        <canvas id="pieChart" style="max-width: 400px; max-height: 400px;"></canvas>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript">
 
+        // Obtener los elementos del año y ciudad
+        var yearInput = document.getElementById('yearInput');
+        var productCombo = document.getElementById('productCombo');
+
+        // Los change hacen que cada que se hace una modificacion, recargan los elementos.
+        yearInput.addEventListener('change', cargar);
+        productCombo.addEventListener('change', cargar);
+
         function cargar() {
-            var productCombo = document.getElementById('productCombo');
-            var FechaInicio = document.getElementById('yearInput');
+            var FechaInicio = document.getElementById('yearInput').value;
+            var Ciudad = document.getElementById('productCombo').value;
 
-            var Ciudad = productCombo.value;
-            var Fecha = FechaInicio.value;
+            console.log("Funcion Cargar " + Ciudad, FechaInicio);
 
-            console.log(Ciudad, Fecha);
-
-            cargarGrafica(Ciudad, Fecha);
+            cargarGrafica(Ciudad, FechaInicio);
         }
 
-
-
         fetch("http://localhost:85/Product/GetCity", {
-            //Se especifica que se recibira un json y se incluira, permitiendo enviar, recibir instrucciones.
             headers: { "Content-Type": "application/json" },
             credentials: 'include'
         })
-        //Si la respuesta no es exitosa, se lanza una excepción.
             .then(response => {
                 if (!response.ok) {
                     throw response;
@@ -95,15 +93,7 @@
                 return response.json();
             })
             .then(info => {
-                // Obtener el elemento del combo box
-                var productCombo = document.getElementById('productCombo');
-
-                // Limpiar las opciones existentes
                 productCombo.innerHTML = '';
-
-                // Agregar las opciones del combo box utilizando los datos recibidos
-                // Para cada elemento info (consulta) se crea un option 
-                // Y se le agrega su valor correspondinete, agregando estos al combobox.
                 info.forEach(item => {
                     var option = document.createElement('option');
                     option.value = item.city;
@@ -111,16 +101,17 @@
                     productCombo.appendChild(option);
                 });
             })
-            // Si se produce un error, lo manda a consola saltando esta excepcion.
             .catch(error => console.log(error));
 
 
-        let myChart; // Variable para almacenar la instancia de la gráfica
+        let myChart;
+        let pieChart;
 
         function cargarGrafica(Ciudad, Fecha) {
+            console.log("Llamada al servidor");
             fetch("http://localhost:85/Product/GetCiudadAnio/" + encodeURIComponent(Ciudad) + "/" + encodeURIComponent(Fecha), {
                 headers: { "Content-Type": "application/json" },
-                credentials: 'include'
+                credentials: 'include'    
             })
                 .then(response => {
                     if (!response.ok) {
@@ -129,9 +120,7 @@
                     return response.json();
                 })
                 .then(info => {
-                    console.log(info)
-                    // Crear un array (data) para almacenar los datos de la gráfica
-                    const data = {
+                    const barChartData = {
                         labels: [],
                         datasets: [{
                             label: 'Ventas Totales',
@@ -142,29 +131,37 @@
                         }]
                     };
 
-                    // Obtener el elemento canvas donde se renderizará la gráfica
+                    const pieChartData = {
+                        labels: [],
+                        datasets: [{
+                            label: 'Ventas Totales',
+                            data: [],
+                            backgroundColor: []
+                        }]
+                    };
+
                     const ctx = document.getElementById('chart').getContext('2d');
-                    // Destruir la instancia anterior de la gráfica si existe
+                    const pieCtx = document.getElementById('pieChart').getContext('2d');
+
                     if (myChart) {
                         myChart.destroy();
                     }
+                    if (pieChart) {
+                        pieChart.destroy();
+                    }
 
-                    // Recorrer los datos recibidos y agregarlos al array de la gráfica
-                    //En cada iteración, se agrega el nombre de la compañía al array 
-                    //dentro de data y se agrega la cantidad de ventas totales al array data 
-                    //dentro del objeto datasets.
                     info.forEach(item => {
-                        data.labels.push(item.companyName);
-                        data.datasets[0].data.push(item.totalSales);
+                        barChartData.labels.push(item.companyName);
+                        barChartData.datasets[0].data.push(item.totalSales);
+
+                        pieChartData.labels.push(item.companyName);
+                        pieChartData.datasets[0].data.push(item.totalSales);
+                        pieChartData.datasets[0].backgroundColor.push(getRandomColor());
                     });
 
-                    // Crear la instancia de la gráfica utilizando Chart.js
-                    //Se pasa el contexto del elemento canvas, el tipo de gráfica (barras), 
-                    //y los datos y algunas opciones de configuración, 
-                    //como la capacidad de respuesta y la configuración de escalas.
                     myChart = new Chart(ctx, {
                         type: 'bar',
-                        data: data,
+                        data: barChartData,
                         options: {
                             responsive: true,
                             scales: {
@@ -174,8 +171,25 @@
                             }
                         }
                     });
+
+                    pieChart = new Chart(pieCtx, {
+                        type: 'pie',
+                        data: pieChartData,
+                        options: {
+                            responsive: true
+                        }
+                    });
                 })
                 .catch(error => console.log(error));
+        }
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
         }
 
     </script>

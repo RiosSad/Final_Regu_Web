@@ -377,6 +377,34 @@ namespace APIWebNWind.Controllers
             return Ok(query.ToList());
         }
 
+        [HttpGet]
+        [Route("GetTodoo/{anio}")]
+        public IActionResult GetTodoo(int anio)
+        {
+
+            var query = (from nueva in
+                (from customer in contexto.Customers
+                 select new
+                 {
+                     customer.CompanyName,
+                     customer.City,
+                     TotalSales = (from order in contexto.Orders
+                                   join orderDetail in contexto.Orderdetails on order.OrderId equals orderDetail.OrderId
+                                   where order.CustomerId == customer.CustomerId
+                                   && order.OrderDate.Value.Year == anio
+                                   select orderDetail.UnitPrice * orderDetail.Quantity).Sum()
+                 })
+                         where nueva.TotalSales > 0
+                         select new
+                         {
+                             nueva.CompanyName,
+                             nueva.City,
+                             nueva.TotalSales
+                         }
+                        );
+            return Ok(query);
+        }
+
 
 
 
